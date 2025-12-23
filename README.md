@@ -13,7 +13,6 @@ A production-ready, scalable URL shortening service built with **FastAPI** and *
 - **Async/Await**: Fully asynchronous for high concurrency
 - **Background Tasks**: Non-blocking logging and analytics
 - **Rate Limiting**: IP-based protection
-- **Auto-Generated Docs**: Swagger UI and ReDoc
 
 ## 🚀 Quick Start
 
@@ -144,11 +143,3 @@ See [SCALABILITY.md](./SCALABILITY.md) for detailed scalability analysis.
 2. Deploy multiple instances (load balancer)
 3. Move logging to message queue
 4. Database read replicas
-
-## 📝 License
-
-Part of a technical interview process.
-
----
-
-**Built with ❤️ using FastAPI and Python**
