@@ -1,104 +1,154 @@
+# 🔗 URL Shortener Service
 
-### 📄 `README.md`
+A production-ready, scalable URL shortening service built with **FastAPI** and **SQLite** (default). Features database abstraction for easy switching to PostgreSQL, pre-allocated short code pools, and multi-instance support.
 
+## ✨ Features
 
-# 🔗 URL Shortener – Python FastAPI Interview Task
+- **URL Shortening**: Fixed 7-character short codes (e.g., `0000000`)
+- **URL Redirection**: Fast HTTP 302 redirects
+- **Visit Statistics**: Track visit counts and detailed logs
+- **Short Code Pool**: Pre-allocated in-memory codes for zero-database-contention
+- **Multi-Instance Support**: Service registry and batch reservation system
+- **Database Abstraction**: Easy switching between SQLite and PostgreSQL
+- **Async/Await**: Fully asynchronous for high concurrency
+- **Background Tasks**: Non-blocking logging and analytics
+- **Rate Limiting**: IP-based protection
+- **Auto-Generated Docs**: Swagger UI and ReDoc
 
-This is a simple, scalable URL shortening service built with **FastAPI**, **SQLModel**, and **Alembic**.
-
-This project is part of a technical interview process and is designed to showcase:
-- Clean architecture & maintainable code
-- Performance & scalability considerations
-- Logging and observability practices
-- Experience with SQLAlchemy / SQLModel, Alembic, and REST APIs
-
----
-
-## 🧩 Features
-
-- Create short URLs (`POST /shorten`)
-- Redirect to original URL (`GET /{short_code}`)
-- Track and view visit statistics (`GET /stats/{short_code}`)
-- Custom logging with middleware
-- Modular and scalable codebase structure
-
----
-
-## 🚀 Getting Started
-
-### 1. Clone the repo
+## 🚀 Quick Start
 
 ```bash
-git clone https://github.com/mahdimmr/url-shortener.git
-cd url-shortener
-```
+# Start the service (auto-creates venv, installs deps, runs migrations)
+./start.sh
 
-### 2. Create virtual environment & install dependencies
-
-```bash
+# Or manually:
 python -m venv venv
-source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+source venv/bin/activate
 pip install -r requirements.txt
-```
-
-### 3. Setup the database
-
-> By default, it uses PostgreSQL, Look at in `sample.env` PG_DSN.
-
-```bash
-cp sample.env .env
 alembic upgrade head
-```
-
-### 4. Run the app
-
-```bash
 uvicorn app.main:app --reload
 ```
 
-Open your browser at: [http://localhost:8000/docs](http://localhost:8000/docs)
+Access:
+- **API**: http://localhost:8000
+- **Docs**: http://localhost:8000/docs
+- **Health**: http://localhost:8000/health
 
----
+## 📚 API Endpoints
 
-## 🧪 Running Tests
+### POST /shorten
+Create a short URL.
 
 ```bash
-pytest
+curl -X POST http://localhost:8000/shorten \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com"}'
 ```
 
----
+Response:
+```json
+{
+  "short_code": "0000001",
+  "short_url": "http://localhost:8000/0000001",
+  "original_url": "https://example.com"
+}
+```
+
+### GET /{short_code}
+Redirect to original URL (HTTP 302).
+
+### GET /stats/{short_code}
+Get visit statistics.
+
+## 🏗 Architecture
+
+```
+Client → FastAPI → Service Layer → Database Adapter → SQLite/PostgreSQL
+                ↓
+         Background Tasks (logging, analytics)
+```
+
+**Key Components:**
+- **Short Code Pool**: In-memory pool of pre-allocated codes (1000 by default)
+- **Batch Reservation**: Sequential ID reservation across instances
+- **Service Registry**: Unique service IDs for multi-instance deployments
+- **Database Adapter**: Abstraction layer for easy database switching
+
+## 💾 Database
+
+**Default: SQLite** (file-based, no setup needed)
+- Database file: `./urlshortener.db`
+- Perfect for development and testing
+
+**Production: PostgreSQL** (optional)
+- Switch by creating `PostgreSQLAdapter` and updating factory
+- No code changes needed elsewhere
+
+**Database Abstraction:**
+- All database-specific code in adapters (`app/db/sqlite_adapter.py`)
+- Rest of codebase uses `DatabaseAdapter` interface
+- Easy to add new database backends
+
+## 🧪 Testing
+
+```bash
+./test.sh          # All tests
+./test.sh unit     # Unit tests
+./test.sh load     # Load tests (server starts automatically)
+```
 
 ## 📁 Project Structure
 
 ```
 app/
-├── api/           # FastAPI routers
-├── core/          # Configuration, shared utilities
-├── db/            # Models, session, CRUD, migrations
-├── middleware/    # Logging or custom middleware
-├── main.py        # FastAPI app entrypoint
+├── api/           # FastAPI endpoints
+├── services/      # Business logic (URL, redirect, stats, pool, registry)
+├── db/            # Models, session, database adapters
+├── core/          # Settings, exceptions, validators
+└── middleware/    # Logging middleware
 ```
 
+## ⚙️ Configuration
+
+Environment variables (`.env`):
+```bash
+DATABASE_URL=sqlite+aiosqlite:///./urlshortener.db
+BASE_URL=http://localhost:8000
+SHORT_CODE_POOL_SIZE=1000
+SHORT_CODE_BATCH_SIZE=10
+SHORT_CODE_LENGTH=7
+MAX_SERVICES=100
+```
+
+## 🔧 Design Decisions
+
+- **Fixed 7-character codes**: All codes same length (`0000000` to `zzzzzzz`)
+- **Short Code Pool**: Pre-allocated codes eliminate database contention
+- **Batch Reservation**: Sequential ID ranges prevent conflicts across instances
+- **Service Registry**: Unique IDs for each service instance
+- **On-Demand Creation**: ShortURL records created when codes are used
+- **Database Abstraction**: Interface pattern for easy database switching
+- **Background Tasks**: Non-blocking logging and analytics
+
+## 📈 Scalability
+
+See [SCALABILITY.md](./SCALABILITY.md) for detailed scalability analysis.
+
+**Current Capacity:**
+- Single instance: 500-1000 RPS
+- Multi-instance: Scales horizontally with service registry
+- Short code pool: Zero database contention for code generation
+
+**Scaling Path:**
+1. Add Redis cache (90%+ hit rate)
+2. Deploy multiple instances (load balancer)
+3. Move logging to message queue
+4. Database read replicas
+
+## 📝 License
+
+Part of a technical interview process.
+
 ---
 
-## 📌 Notes for Interviewers
-
-- The implementation is scoped to take ~1 working day.
-- Logging is implemented using a custom middleware.
-- Visit tracking is minimal; can be extended to store timestamps/user-agent/etc.
-- Add any modules, files, or dependencies you find necessary.
-- In short: you’re free to treat this as a real project.
-- For production: add rate limiting, background jobs for analytics, async DB access, etc.
-- We're more interested in how you think and structure your work than in having one "correct" answer. Good luck, and
-  enjoy the process!
-
----
-
-## 🧠 Bonus Ideas (if you have time)
-
-- Custom short code support
-- Expiration time for URLs
-- Admin dashboard to view top URLs
-- Dockerfile & deployment configs
-
----
+**Built with ❤️ using FastAPI and Python**
